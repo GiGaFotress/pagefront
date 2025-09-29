@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>群通告生成器 (支持粘贴)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #1a1a1a;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        .rule-inputs {
+            display: flex;
+            gap: 10px;
+        }
+        .rule-inputs input {
+            text-align: center;
+        }
+        
+        .paste-area {
+            display: flex;
+            gap: 10px;
+            border: none;
+            padding: 0;
+        }
+        .paste-area input[type="file"] {
+            display: none;
+        }
+        .upload-button, .paste-button {
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s, border-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+        }
+        .upload-button {
+            flex: 2;
+            border: 2px dashed #007bff;
+            background-color: #f8f9fa;
+            color: #007bff;
+        }
+        .upload-button:hover {
+            background-color: #e9ecef;
+            border-color: #0056b3;
+        }
+        .paste-button {
+            flex: 1;
+            border: 2px solid #6c757d;
+            background-color: #f8f9fa;
+            color: #495057;
+            cursor: text;
+        }
+        .paste-button:hover {
+            background-color: #e9ecef;
+        }
+
+        .file-list {
+            margin-top: 10px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        .file-item button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            cursor: pointer;
+        }
+        #mute-days-group {
+            display: none;
+        }
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .submit-btn:hover {
+            background-color: #0056b3;
+        }
+        .submit-btn:disabled {
+            background-color: #a0c7ff;
+            cursor: not-allowed;
+        }
+        .output-section {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        h2 {
+            color: #1a1a1a;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        #image-output a, #text-output button {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 15px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        #image-output a:hover, #text-output button:hover {
+            background-color: #218838;
+        }
+         #text-output button {
+            background-color: #17a2b8;
+        }
+        #text-output button:hover {
+             background-color: #138496;
+        }
+        #preview-canvas {
+            border: 1px solid #ddd;
+            width: 100%;
+            background-color: #fff;
+            margin-top: 10px;
+        }
+        #text-result {
+            width: 100%;
+            height: 250px;
+            margin-top: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: inherit;
+        }
+        /* --- 修改点 2: 新增样式 --- */
+        .checkbox-container {
+            margin-top: 15px; 
+            display: flex; 
+            align-items: center; 
+            user-select: none;
+        }
+        .checkbox-container input[type="checkbox"] {
+            margin-right: 8px; 
+            transform: scale(1.2); 
+            cursor: pointer;
+        }
+        .checkbox-container label {
+            font-weight: normal; 
+            margin-bottom: 0; 
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>群通告生成器</h1>
+
+        <div id="form">
+            <div class="form-group">
+                <label for="account-screenshot-input">1. 上传账号截图（1张）</label>
+                <div id="account-paste-area" class="paste-area">
+                    <input type="file" id="account-screenshot-input" accept="image/*">
+                    <div id="account-upload-btn" class="upload-button">点击选择文件</div>
+                    <div class="paste-button">或在此粘贴图片<br>(Ctrl+V)</div>
+                </div>
+                <div id="account-file-list" class="file-list"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="rule-number-1">2. 违反群规第几条？（可多填，留空则不显示）</label>
+                <div class="rule-inputs">
+                    <input type="text" id="rule-number-1" placeholder="例: 三 或 3">
+                    <input type="text" id="rule-number-2" placeholder="例: 五 或 5">
+                    <input type="text" id="rule-number-3" placeholder="例: 十 或 10">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="evidence-screenshots-input">3. 上传证据截图（可多选）</label>
+                <div id="evidence-paste-area" class="paste-area">
+                    <input type="file" id="evidence-screenshots-input" accept="image/*" multiple>
+                    <div id="evidence-upload-btn" class="upload-button">点击选择文件 (可多选)</div>
+                    <div class="paste-button">或在此粘贴图片<br>(Ctrl+V)</div>
+                </div>
+                
+                <!-- --- 修改点 2: 更新复选框结构 --- -->
+                <div class="checkbox-container">
+                    <input type="checkbox" id="evidence-visibility-toggle" checked>
+                    <label for="evidence-visibility-toggle">证据内容适合在群内公开展示</label>
+                </div>
+                <div id="hide-completely-option-container" class="checkbox-container" style="display: none; padding-left: 25px;">
+                     <input type="checkbox" id="evidence-hide-completely-toggle">
+                     <label for="evidence-hide-completely-toggle">内容涉政等，完全不适合展示（将替换图片为"不宜展示"）</label>
+                </div>
+                <!-- --- 结束修改 --- -->
+
+                <div id="evidence-file-list" class="file-list"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="punishment">4. 选择处罚</label>
+                <select id="punishment">
+                    <option value="警告">警告</option>
+                    <option value="禁言">禁言</option>
+                    <option value="踢出本群">踢出本群</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="mute-days-group">
+                <label for="mute-days">禁言天数</label>
+                <input type="number" id="mute-days" value="7" min="1">
+            </div>
+
+            <button id="generate-btn" class="submit-btn">生成通告</button>
+        </div>
+
+        <div class="output-section">
+            <div id="image-output">
+                <h2>图片版本</h2>
+                <canvas id="preview-canvas"></canvas>
+                <a id="download-link" style="display:none;">下载图片</a>
+            </div>
+
+            <div id="text-output">
+                <h2>可复制文本模板</h2>
+                <textarea id="text-result" readonly></textarea>
+                <button id="copy-btn" style="display:none;">复制文本</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let accountFiles = [];
+        let evidenceFiles = [];
+
+        function setupPasteArea(inputId, pasteAreaId, uploadButtonId, fileListId, fileArray, isSingle) {
+            const input = document.getElementById(inputId);
+            const pasteArea = document.getElementById(pasteAreaId);
+            const uploadButton = document.getElementById(uploadButtonId);
+            
+            uploadButton.addEventListener('click', () => input.click());
+            
+            input.addEventListener('change', (e) => {
+                handleFiles(e.target.files, fileArray, fileListId, isSingle);
+                input.value = '';
+            });
+
+            pasteArea.addEventListener('paste', (e) => {
+                e.preventDefault();
+                handleFiles(e.clipboardData.files, fileArray, fileListId, isSingle);
+            });
+        }
+        
+        setupPasteArea('account-screenshot-input', 'account-paste-area', 'account-upload-btn', 'account-file-list', accountFiles, true);
+        setupPasteArea('evidence-screenshots-input', 'evidence-paste-area', 'evidence-upload-btn', 'evidence-file-list', evidenceFiles, false);
+        
+        function handleFiles(files, fileArray, fileListId, isSingle) {
+            const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            if (imageFiles.length === 0) return;
+
+            if (isSingle) {
+                fileArray.length = 0;
+                fileArray.push(imageFiles[0]);
+            } else {
+                fileArray.push(...imageFiles);
+            }
+            renderFileList(fileListId, fileArray);
+        }
+
+        function renderFileList(fileListId, fileArray) {
+            const listElement = document.getElementById(fileListId);
+            listElement.innerHTML = '';
+            fileArray.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                
+                const fileName = document.createElement('span');
+                fileName.textContent = file.name || `pasted_image_${Date.now()}.png`;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '移除';
+                removeBtn.onclick = () => {
+                    fileArray.splice(index, 1);
+                    renderFileList(fileListId, fileArray);
+                };
+                
+                item.appendChild(fileName);
+                item.appendChild(removeBtn);
+                listElement.appendChild(item);
+            });
+        }
+        
+        const punishmentSelect = document.getElementById('punishment');
+        const muteDaysGroup = document.getElementById('mute-days-group');
+        const generateBtn = document.getElementById('generate-btn');
+        // --- 修改点 2: 获取复选框UI元素并添加事件监听 ---
+        const evidenceVisibilityToggle = document.getElementById('evidence-visibility-toggle');
+        const hideCompletelyOptionContainer = document.getElementById('hide-completely-option-container');
+
+        evidenceVisibilityToggle.addEventListener('change', () => {
+            hideCompletelyOptionContainer.style.display = evidenceVisibilityToggle.checked ? 'none' : 'flex';
+            if (evidenceVisibilityToggle.checked) {
+                 document.getElementById('evidence-hide-completely-toggle').checked = false;
+            }
+        });
+        
+        punishmentSelect.addEventListener('change', () => {
+            muteDaysGroup.style.display = punishmentSelect.value === '禁言' ? 'block' : 'none';
+        });
+
+        function toChineseNum(numStr) {
+            const str = String(numStr).trim();
+            if (!str) return '';
+            const chnNum = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+            const directChinese = ['一','二','三','四','五','六','七','八','九','十'];
+            if(directChinese.includes(str)) return str;
+
+            if (/^\d+$/.test(str)) {
+                if (str.length === 1) return chnNum[parseInt(str)];
+                if (str === '10') return '十';
+                if (str > 10 && str < 20) return '十' + chnNum[parseInt(str[1])];
+                if (str.endsWith('0')) return chnNum[parseInt(str[0])] + '十';
+                return chnNum[parseInt(str[0])] + '十' + chnNum[parseInt(str[1])];
+            }
+            return str;
+        }
+
+        generateBtn.addEventListener('click', async () => {
+            generateBtn.disabled = true;
+            generateBtn.textContent = '正在生成中...';
+            
+            const ruleNumbers = [
+                document.getElementById('rule-number-1').value.trim(),
+                document.getElementById('rule-number-2').value.trim(),
+                document.getElementById('rule-number-3').value.trim()
+            ].filter(n => n !== '');
+
+            const punishment = punishmentSelect.value;
+            const muteDays = document.getElementById('mute-days').value;
+            
+            // --- 修改点 2: 获取两个复选框的状态 ---
+            const evidenceIsVisible = evidenceVisibilityToggle.checked;
+            const evidenceHideCompletely = !evidenceIsVisible && document.getElementById('evidence-hide-completely-toggle').checked;
+            
+            if (accountFiles.length === 0 || evidenceFiles.length === 0) {
+                alert('请上传“账号截图”和至少一张“证据截图”！');
+                generateBtn.disabled = false;
+                generateBtn.textContent = '生成通告';
+                return;
+            }
+
+            let punishmentText = punishment;
+            if (punishment === '禁言') {
+                punishmentText = `禁言${muteDays}天`;
+            }
+
+            let ruleTextForRender;
+            let ruleTextForDisplay;
+
+            if (ruleNumbers.length > 0) {
+                const chineseRuleNumbers = ruleNumbers.map(toChineseNum);
+                const ruleClause = chineseRuleNumbers.map(n => `第${n}条`).join('，');
+                ruleTextForRender = `　　其部分发言存在违反群规${ruleClause}`;
+                ruleTextForDisplay = `其部分发言存在违反群规${ruleClause}`;
+            } else {
+                ruleTextForRender = '　　其部分发言存在违反群规第（相关）条';
+                ruleTextForDisplay = '其部分发言存在违反群规第（相关）条';
+            }
+
+            const textContent = `【通 告】\n　　经详细调查聊天记录、取证并经过我们一致讨论后，现做出以下通告：该同志\n（此处为账号截图）\n\n　　${ruleTextForDisplay}\n（此处为证据截图）\n\n　　经过我们一致讨论后决定，对该同志做出如下处罚：\n　　${punishmentText}\n\n　　通报完毕，希望各位同志们能遵守群规，文明和谐聊天，不要有越线行为，不当发言。如有疑问，烦请私聊。非常感谢同志们的支持和理解！`;
+            
+            document.getElementById('text-result').value = textContent;
+            document.getElementById('copy-btn').style.display = 'inline-block';
+
+            const canvas = document.getElementById('preview-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const loadImage = file => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            try {
+                const [accountImg, ...evidenceImgs] = await Promise.all([
+                    loadImage(accountFiles[0]),
+                    ...evidenceFiles.map(loadImage)
+                ]);
+                // --- 修改点 2: 传递两个状态到绘制函数 ---
+                await drawCanvas(ctx, { accountImg, ruleText: ruleTextForRender, evidenceImgs, punishmentText, evidenceIsVisible, evidenceHideCompletely });
+            } catch (error) {
+                console.error('图片加载或绘制失败:', error);
+                alert('图片处理失败，请检查文件格式或重试。');
+            }
+
+            generateBtn.disabled = false;
+            generateBtn.textContent = '生成通告';
+        });
+
+        document.getElementById('copy-btn').addEventListener('click', () => {
+            const textResult = document.getElementById('text-result');
+            textResult.select();
+            navigator.clipboard.writeText(textResult.value).then(() => {
+                alert('文本已复制到剪贴板！');
+            });
+        });
+
+        async function drawCanvas(ctx, data) {
+            const canvas = ctx.canvas;
+            const PADDING = 40;
+            const CANVAS_WIDTH = 750;
+            const LINE_HEIGHT_RATIO = 1.7;
+            const FONT_SIZE_NORMAL = 24;
+            const FONT_SIZE_HEADER = 36;
+            
+            ctx.font = `${FONT_SIZE_NORMAL}px sans-serif`;
+            
+            let totalHeight = PADDING * 2;
+            const introText = '　　经详细调查聊天记录、取证并经过我们一致讨论后，现做出以下通告：该同志';
+            const decisionText = '　　经过我们一致讨论后决定，对该同志做出如下处罚：';
+            const finalText = '　　通报完毕，希望各位同志们能遵守群规，文明和谐聊天，不要有越线行为，不当发言。如有疑问，烦请私聊。非常感谢同志们的支持和理解！';
+
+            totalHeight += FONT_SIZE_HEADER + 40;
+            totalHeight += measureTextHeight(ctx, introText, CANVAS_WIDTH - PADDING * 2, FONT_SIZE_NORMAL, LINE_HEIGHT_RATIO) + 10;
+            const accountImgHeight = (data.accountImg.height / data.accountImg.width) * (CANVAS_WIDTH - PADDING * 2);
+            totalHeight += accountImgHeight + 40;
+            totalHeight += measureTextHeight(ctx, data.ruleText, CANVAS_WIDTH - PADDING * 2, FONT_SIZE_NORMAL, LINE_HEIGHT_RATIO) + 10;
+            
+            // --- 修改点 2: 调整高度计算 ---
+            if (data.evidenceHideCompletely && data.evidenceImgs.length > 0) {
+                 totalHeight += 100; // 为"不宜展示"文本保留固定高度
+            } else {
+                data.evidenceImgs.forEach(img => {
+                    totalHeight += (img.height / img.width) * (CANVAS_WIDTH - PADDING * 2) + 15;
+                });
+            }
+
+            totalHeight += 15;
+            totalHeight += measureTextHeight(ctx, decisionText, CANVAS_WIDTH - PADDING * 2, FONT_SIZE_NORMAL, LINE_HEIGHT_RATIO);
+            const FONT_SIZE_PUNISHMENT = FONT_SIZE_NORMAL * 1.5;
+            totalHeight += FONT_SIZE_PUNISHMENT + 30;
+            ctx.font = `${FONT_SIZE_NORMAL}px sans-serif`;
+            totalHeight += measureTextHeight(ctx, finalText, CANVAS_WIDTH - PADDING * 2, FONT_SIZE_NORMAL, LINE_HEIGHT_RATIO);
+            
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = totalHeight;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            let currentY = PADDING;
+            ctx.fillStyle = '#000000';
+            ctx.font = `bold ${FONT_SIZE_HEADER}px sans-serif`;
+            ctx.textAlign = 'center';
+            currentY += FONT_SIZE_HEADER;
+            ctx.fillText('【通 告】', canvas.width / 2, currentY);
+            currentY += 50; 
+            
+            ctx.font = `${FONT_SIZE_NORMAL}px sans-serif`;
+            ctx.textAlign = 'left';
+
+            currentY = wrapText(ctx, introText, PADDING, currentY, CANVAS_WIDTH - PADDING * 2, FONT_SIZE_NORMAL * LINE_HEIGHT_RATIO);
+            currentY += 10;
+            
+            const scaledAccountImgWidth = CANVAS_WIDTH - PADDING * 2;
+            const scaledAccountImgHeight = (data.accountImg.height / data.accountImg.width) * scaledAccountImgWidth;
+            ctx.drawImage(data.accountImg, PADDING, currentY, scaledAccountImgWidth, scaledAccountImgHeight);
+            currentY += scaledAccountImgHeight + 40;
+
+            currentY = wrapText(ctx, data.ruleText, PADDING, currentY, CANVAS_WIDTH - PADDING * 2, FONT_SIZE_NORMAL * LINE_HEIGHT_RATIO);
+            currentY += 10;
+
+            // --- 修改点 2: 核心绘制逻辑，三选一 ---
+            if (data.evidenceHideCompletely) {
+                // 状态一：完全隐藏，显示 "不宜展示"
+                const evidenceAreaStartY = currentY;
+                const evidenceAreaHeight = 100; // 与预估高度一致
+                const verticalCenter = evidenceAreaStartY + evidenceAreaHeight / 2 + 15;
+
+                ctx.save(); // 保存当前状态
+                ctx.font = `bold 48px sans-serif`;
+                ctx.fillStyle = '#dc3545'; // 红色
+                ctx.textAlign = 'center';
+                ctx.fillText('内 容 不 宜 展 示', canvas.width / 2, verticalCenter);
+                ctx.restore(); // 恢复字体、颜色等设置
+
+                currentY += evidenceAreaHeight;
+
+            } else if (!data.evidenceIsVisible) {
+                // 状态二：显示马赛克
+                ctx.save();
+                ctx.imageSmoothingEnabled = false;
+                for (const img of data.evidenceImgs) {
+                    const scaledEvidenceImgWidth = CANVAS_WIDTH - PADDING * 2;
+                    const scaledEvidenceImgHeight = (img.height / img.width) * scaledEvidenceImgWidth;
+                    const pixelSize = Math.max(2, img.width / 40);
+                    const smallWidth = img.width / pixelSize;
+                    const smallHeight = img.height / pixelSize;
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = smallWidth;
+                    tempCanvas.height = smallHeight;
+                    tempCanvas.getContext('2d').drawImage(img, 0, 0, smallWidth, smallHeight);
+                    ctx.drawImage(tempCanvas, PADDING, currentY, scaledEvidenceImgWidth, scaledEvidenceImgHeight);
+                    currentY += scaledEvidenceImgHeight + 15;
+                }
+                ctx.restore();
+            } else {
+                // 状态三：正常显示
+                for (const img of data.evidenceImgs) {
+                    const scaledEvidenceImgWidth = CANVAS_WIDTH - PADDING * 2;
+                    const scaledEvidenceImgHeight = (img.height / img.width) * scaledEvidenceImgWidth;
+                    ctx.drawImage(img, PADDING, currentY, scaledEvidenceImgWidth, scaledEvidenceImgHeight);
+                    currentY += scaledEvidenceImgHeight + 15;
+                }
+            }
+            // --- 结束修改 ---
+
+            currentY += 15;
+            currentY = wrapText(ctx, decisionText, PADDING, currentY, CANVAS_WIDTH - PADDING * 2, FONT_SIZE_NORMAL * LINE_HEIGHT_RATIO);
+            
+            currentY += FONT_SIZE_PUNISHMENT * 0.5;
+            ctx.font = `bold ${FONT_SIZE_PUNISHMENT}px sans-serif`;
+            ctx.fillStyle = '#d9534f';
+            ctx.textAlign = 'center';
+            ctx.fillText(data.punishmentText, canvas.width / 2, currentY);
+            currentY += FONT_SIZE_PUNISHMENT * 0.5 + 30;
+
+            ctx.font = `${FONT_SIZE_NORMAL}px sans-serif`;
+            ctx.fillStyle = '#555555';
+            ctx.textAlign = 'left';
+            wrapText(ctx, finalText, PADDING, currentY, CANVAS_WIDTH - PADDING * 2, FONT_SIZE_NORMAL * LINE_HEIGHT_RATIO);
+
+            const downloadLink = document.getElementById('download-link');
+            downloadLink.href = canvas.toDataURL('image/png');
+            downloadLink.download = `通告-${new Date().getTime()}.png`;
+            downloadLink.style.display = 'inline-block';
+        }
+
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            const words = text.split('');
+            let line = '';
+            let currentY = y;
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n];
+                const metrics = context.measureText(testLine);
+                const testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    context.fillText(line, x, currentY);
+                    line = words[n];
+                    currentY += lineHeight;
+                } else {
+                    line = testLine;
+                }
+            }
+            context.fillText(line, x, currentY);
+            return currentY + lineHeight;
+        }
+        
+        function measureTextHeight(context, text, maxWidth, fontSize, lineHeightRatio) {
+            const originalFont = context.font;
+            context.font = `${fontSize}px sans-serif`;
+            const words = text.split('');
+            let line = '';
+            let lines = 1;
+            for(let n = 0; n < words.length; n++) {
+                let testLine = line + words[n];
+                let metrics = context.measureText(testLine);
+                let testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    lines++;
+                    line = words[n];
+                } else {
+                    line = testLine;
+                }
+            }
+            context.font = originalFont;
+            return lines * fontSize * lineHeightRatio;
+        }
+    </script>
+</body>
+</html>
